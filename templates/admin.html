@@ -57,10 +57,11 @@
                         <td>{{ item.created_at }}</td>
                         <td><code>{{ "%.5f"|format(item.latitude) }}, {{ "%.5f"|format(item.longitude) }}</code></td>
                         <td>
-                            <img src="{{ url_for('static', filename='uploads/' + item.photo_path) }}" 
-                                 class="thumb-img shadow-sm" 
-                                 onclick="showModalImage('{{ url_for('static', filename='uploads/' + item.photo_path) }}')" 
-                                 alt="รูปถ่าย">
+                            <img src="{{ item.photo_url }}"
+                                class="thumb-img shadow-sm"
+                                onclick="showModalImage('{{ item.photo_url }}')"
+                                alt="รูปถ่ายเช็คอิน"
+                                loading="lazy">
                         </td>
                         <td class="text-center pe-3">
                             <a href="https://www.google.com/maps?q={{ item.latitude }},{{ item.longitude }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill">
