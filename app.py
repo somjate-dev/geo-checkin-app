@@ -1,19 +1,18 @@
 import os
-import sqlite3
 from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# 1. นำเข้า Cloudinary SDK
+# 1. นำเข้า Cloudinary และ Supabase SDK
 import cloudinary
 import cloudinary.uploader
+from supabase import create_client, Client
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'checkin-super-secret-key-2026')
-DATABASE = 'checkin.db'
 
-# 2. ตั้งค่าการเชื่อมต่อ Cloudinary ผ่าน Environment Variables
+# 2. เชื่อมต่อ Cloudinary
 cloudinary.config(
     cloud_name = os.environ.get('Root'),
     api_key = os.environ.get('411612461233476'),
@@ -21,44 +20,13 @@ cloudinary.config(
     secure = True
 )
 
-def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+# 3. เชื่อมต่อ Supabase
+SUPABASE_URL = os.environ.get('https://ssbkkejpaduiwmfzijsb.supabase.co')
+SUPABASE_KEY = os.environ.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmtrZWpwYWR1aXdtZnppanNiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzI3MjA1NiwiZXhwIjoyMTA4ODQ4MDU2fQ.MnPA2R2GPS0gGOLk9M3k3mfClsevWOd_gnDFNwQW3M4')
 
-def init_db():
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'user'
-            )
-        ''')
-        # ตาราง checkins: photo_url จะเก็บ Full HTTPS URL ของ Cloudinary
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS checkins (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                latitude REAL NOT NULL,
-                longitude REAL NOT NULL,
-                photo_url TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        ''')
-        cursor.execute("SELECT * FROM users WHERE username = 'admin'")
-        if not cursor.fetchone():
-            cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-                           ('admin', generate_password_hash('admin123'), 'admin'))
-            cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-                           ('staff01', generate_password_hash('pass123'), 'user'))
-        conn.commit()
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
-init_db()
-
-# --- Decorators สิทธิ์การใช้งานคงเดิม ---
+# Decorators สิทธิ์การใช้งาน
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -75,7 +43,39 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- API Check-in อัปโหลดขึ้น Cloudinary ---
+# --- Routes ---
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        # ค้นหาผู้ใช้งานจาก Supabase
+        response = supabase.table('users').select('*').eq('username', username).execute()
+        users = response.data
+        
+        if users and check_password_hash(users[0]['password'], password):
+            session['username'] = users[0]['username']
+            session['role'] = users[0]['role']
+            if users[0]['role'] == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/')
+@login_required
+def index():
+    return render_template('index.html', username=session['username'])
+
 @app.route('/api/checkin', methods=['POST'])
 @login_required
 def api_checkin():
@@ -89,73 +89,40 @@ def api_checkin():
         if not file or file.filename == '':
             return jsonify({'success': False, 'message': 'กรุณาถ่ายรูปภาพก่อนเช็คอิน'}), 400
 
-        # 3. อัปโหลดรูปขึ้น Cloudinary พร้อมเทคนิค Optimization
-        # - จัดเก็บในโฟลเดอร์ 'checkin_photos'
-        # - แปลงคุณภาพและฟอร์แมตอัตโนมัติ (auto-quality / auto-format) ช่วยประหยัดพื้นที่
+        # อัปโหลดรูปขึ้น Cloudinary
         upload_result = cloudinary.uploader.upload(
             file,
-            folder = "checkin_photos",
-            public_id = f"{session['username']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            transformation = [
-                {'width': 1200, 'crop': "limit"},  # ปรับขนาดไม่ให้เกิน 1200px
-                {'quality': "auto"},               # บีบอัดคุณภาพรูปภาพอัตโนมัติ
-                {'fetch_format': "auto"}           # แปลงเป็น WebP ให้อัตโนมัติถ้าเบราว์เซอร์รองรับ
+            folder="checkin_photos",
+            transformation=[
+                {'width': 1200, 'crop': "limit"},
+                {'quality': "auto"},
+                {'fetch_format': "auto"}
             ]
         )
-        
-        # ดึง URL รูปภาพที่เป็น HTTPS
         image_url = upload_result.get('secure_url')
         
-        # 4. บันทึกข้อมูลและ Cloudinary URL ลง Database
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO checkins (username, latitude, longitude, photo_url, created_at)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (session['username'], float(latitude), float(longitude), image_url, current_time))
-            conn.commit()
+        # บันทึกข้อมูลลง Supabase PostgreSQL
+        new_record = {
+            'username': session['username'],
+            'latitude': float(latitude),
+            'longitude': float(longitude),
+            'photo_url': image_url
+        }
+        supabase.table('checkins').insert(new_record).execute()
             
-        return jsonify({'success': True, 'message': 'เช็คอินและอัปโหลดรูปภาพถาวรสำเร็จ!'})
+        return jsonify({'success': True, 'message': 'เช็คอินและบันทึกข้อมูลถาวรสำเร็จ!'})
         
     except Exception as e:
         return jsonify({'success': False, 'message': f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
-# Route อื่น ๆ (login, logout, index, admin) คงเดิม...
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-            user = cursor.fetchone()
-            if user and check_password_hash(user['password'], password):
-                session['username'] = user['username']
-                session['role'] = user['role']
-                return redirect(url_for('admin_dashboard') if user['role'] == 'admin' else url_for('index'))
-            return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
-    return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-@app.route('/')
-@login_required
-def index():
-    return render_template('index.html', username=session['username'])
-
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM checkins ORDER BY id DESC")
-        checkins = cursor.fetchall()
+    # ดึงรายการเช็คอินทั้งหมด เรียงจากล่าสุดไปเก่าสุด
+    response = supabase.table('checkins').select('*').order('id', desc=True).execute()
+    checkins = response.data
     return render_template('admin.html', checkins=checkins, username=session['username'])
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
