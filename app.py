@@ -21,7 +21,7 @@ cloudinary.config(
 )
 
 # 3. เชื่อมต่อ Supabase
-SUPABASE_URL = os.environ.get('https://ssbkkejpaduiwmfzijsb.supabase.co')
+SUPABASE_URL = os.environ.get('https://xhakpthsysjkwdoptbmy.supabase.co')
 SUPABASE_KEY = os.environ.get('sb_publishable_z3BTw33HFZFU1eW9c_Jwpw_MOh7tVC-')
 
 
