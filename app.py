@@ -92,15 +92,28 @@ def login():
         # ค้นหาผู้ใช้งานจาก Supabase
         response = supabase.table('users').select('*').eq('username', username).execute()
         users = response.data
-        
+
+ # เปรียบเทียบรหัสผ่าน
         if users and check_password_hash(users[0]['password'], password):
             session['username'] = users[0]['username']
-            session['role'] = users[0]['role']
-            if users[0]['role'] == 'admin':
+
+            # 💡 แก้ไขจุดนี้: ใช้ .get('role', 'user') แทน เพื่อป้องกัน KeyError
+            session['role'] = users[0].get('role', 'user')
+
+            if session['role'] == 'admin':
                 return redirect(url_for('admin_dashboard'))
             return redirect(url_for('index'))
         else:
             return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+               
+        # if users and check_password_hash(users[0]['password'], password):
+        #     session['username'] = users[0]['username']
+        #     session['role'] = users[0]['role']
+        #     if users[0]['role'] == 'admin':
+        #         return redirect(url_for('admin_dashboard'))
+        #     return redirect(url_for('index'))
+        # else:
+        #     return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
             
     return render_template('login.html')
 # @app.route('/login', methods=['GET', 'POST'])
