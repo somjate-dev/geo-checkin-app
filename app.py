@@ -14,18 +14,42 @@ app.secret_key = os.environ.get('SECRET_KEY', 'checkin-super-secret-key-2026')
 
 # 2. เชื่อมต่อ Cloudinary
 cloudinary.config(
-    cloud_name = os.environ.get('Root'),
-    api_key = os.environ.get('411612461233476'),
-    api_secret = os.environ.get('911GPlaZWRy-Hax0IVa9SLqHel0'),
+    # cloud_name = os.environ.get('Root'),
+    # api_key = os.environ.get('411612461233476'),
+    # api_secret = os.environ.get('911GPlaZWRy-Hax0IVa9SLqHel0'),
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'Root'),
+    api_key = os.environ.get('CLOUDINARY_API_KEY', '411612461233476'),
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET', '911GPlaZWRy-Hax0IVa9SLqHel0'),
+
     secure = True
+
 )
-
 # 3. เชื่อมต่อ Supabase
-SUPABASE_URL = os.environ.get('https://xhakpthsysjkwdoptbmy.supabase.co')
-SUPABASE_KEY = os.environ.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoYWtwdGhzeXNqa3dkb3B0Ym15Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjQ3NjAyMCwiZXhwIjoyMTA4MDUyMDIwfQ.64qJFSqdUvo9bdafkwyDOnRlfHIUPwGRjzAkb_u0Hgo')
+# ดึงค่าจาก Env Var บน Render ถ้าไม่มีให้ใช้ค่าสำรอง (Default Value) ที่กำหนดไว้ข้างหลัง
+SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://xhakpthsysjkwdoptbmy.supabase.co').strip()
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoYWtwdGhzeXNqa3dkb3B0Ym15Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjQ3NjAyMCwiZXhwIjoyMTA4MDUyMDIwfQ.64qJFSqdUvo9bdafkwyDOnRlfHIUPwGRjzAkb_u0Hgo').strip()
+
+# ตัดส่วนเกินของ URL อัตโนมัติ (หากเผลอก๊อปปี้เอา /rest/v1/ ติดมา)
+if "/rest/v1" in SUPABASE_URL:
+    SUPABASE_URL = SUPABASE_URL.split("/rest/v1")[0].strip()
+
+# สร้าง Client
+try:
+    if SUPABASE_URL and SUPABASE_KEY:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("✅ SUCCESS: เชื่อมต่อ Supabase Client สำเร็จ!")
+    else:
+        raise ValueError("SUPABASE_URL หรือ SUPABASE_KEY มีค่าว่างเปล่า")
+except Exception as e:
+    print(f"❌ ERROR ในการเชื่อมต่อ Supabase: {str(e)}")
+    supabase = None
+    
+# # 3. เชื่อมต่อ Supabase
+# SUPABASE_URL = os.environ.get('https://xhakpthsysjkwdoptbmy.supabase.co')
+# SUPABASE_KEY = os.environ.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoYWtwdGhzeXNqa3dkb3B0Ym15Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjQ3NjAyMCwiZXhwIjoyMTA4MDUyMDIwfQ.64qJFSqdUvo9bdafkwyDOnRlfHIUPwGRjzAkb_u0Hgo')
 
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+# supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 # # 3. เชื่อมต่อ Supabase
 # SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://ssbkkejpaduiwmfzijsb.supabase.co')
