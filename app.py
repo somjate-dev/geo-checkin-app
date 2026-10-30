@@ -20,12 +20,25 @@ cloudinary.config(
     secure = True
 )
 
+# # 3. เชื่อมต่อ Supabase
+# SUPABASE_URL = os.environ.get('https://ssbkkejpaduiwmfzijsb.supabase.co')
+# SUPABASE_KEY = os.environ.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmtrZWpwYWR1aXdtZnppanNiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzI3MjA1NiwiZXhwIjoyMTA4ODQ4MDU2fQ.MnPA2R2GPS0gGOLk9M3k3mfClsevWOd_gnDFNwQW3M4')
+
+
+# supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+
 # 3. เชื่อมต่อ Supabase
-SUPABASE_URL = os.environ.get('https://ssbkkejpaduiwmfzijsb.supabase.co')
-SUPABASE_KEY = os.environ.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmtrZWpwYWR1aXdtZnppanNiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzI3MjA1NiwiZXhwIjoyMTA4ODQ4MDU2fQ.MnPA2R2GPS0gGOLk9M3k3mfClsevWOd_gnDFNwQW3M4')
+SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://ssbkkejpaduiwmfzijsb.supabase.co')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmtrZWpwYWR1aXdtZnppanNiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzI3MjA1NiwiZXhwIjoyMTA4ODQ4MDU2fQ.MnPA2R2GPS0gGOLk9M3k3mfClsevWOd_gnDFNwQW3M4')
 
+# สร้าง Client โดยตรง ไม่ต้องมี if-else ให้เสี่ยงเป็น None
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("✅ Supabase connected successfully")
+except Exception as e:
+    print(f"❌ Supabase connection error: {e}")
+    supabase = None
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 # Decorators สิทธิ์การใช้งาน
 def login_required(f):
@@ -47,25 +60,52 @@ def admin_required(f):
 # --- Routes ---
 
 @app.route('/login', methods=['GET', 'POST'])
+# def login():
+#     if request.method == 'POST':
+#         username = request.form.get('username')
+#         password = request.form.get('password')
+        
+#         # ค้นหาผู้ใช้งานจาก Supabase
+#         response = supabase.table('users').select('*').eq('username', username).execute()
+#         users = response.data
+        
+#         if users and check_password_hash(users[0]['password'], password):
+#             session['username'] = users[0]['username']
+#             session['role'] = users[0]['role']
+#             if users[0]['role'] == 'admin':
+#                 return redirect(url_for('admin_dashboard'))
+#             return redirect(url_for('index'))
+#         else:
+#             return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+            
+#     return render_template('login.html')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # ค้นหาผู้ใช้งานจาก Supabase
-        response = supabase.table('users').select('*').eq('username', username).execute()
-        users = response.data
-        
-        if users and check_password_hash(users[0]['password'], password):
-            session['username'] = users[0]['username']
-            session['role'] = users[0]['role']
-            if users[0]['role'] == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            return redirect(url_for('index'))
-        else:
-            return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+        # ตรวจสอบว่า supabase พร้อมใช้งานหรือไม่
+        if not supabase:
+            return render_template('login.html', error='ระบบฐานข้อมูลยังไม่พร้อมใช้งาน (กรุณาตรวจสอบ Environment Variables)')
+            
+        try:
+            response = supabase.table('users').select('*').eq('username', username).execute()
+            users = response.data
+            
+            if users and check_password_hash(users[0]['password'], password):
+                session['username'] = users[0]['username']
+                session['role'] = users[0]['role']
+                if users[0]['role'] == 'admin':
+                    return redirect(url_for('admin_dashboard'))
+                return redirect(url_for('index'))
+            else:
+                return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+        except Exception as e:
+            return render_template('login.html', error=f'เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล: {str(e)}')
             
     return render_template('login.html')
+
 
 @app.route('/logout')
 def logout():
