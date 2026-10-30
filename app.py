@@ -21,8 +21,9 @@ cloudinary.config(
 )
 
 # 3. เชื่อมต่อ Supabase
-SUPABASE_URL = os.environ.get('https://ssbkkejpaduiwmfzijsb.supabase.co')
+SUPABASE_URL = os.environ.get('https://ssbkkejpaduiwmfzijsb.supabase.co/rest/v1/')
 SUPABASE_KEY = os.environ.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmtrZWpwYWR1aXdtZnppanNiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzI3MjA1NiwiZXhwIjoyMTA4ODQ4MDU2fQ.MnPA2R2GPS0gGOLk9M3k3mfClsevWOd_gnDFNwQW3M4')
+
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
