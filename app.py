@@ -35,7 +35,7 @@ if "/rest/v1" in SUPABASE_URL:
 
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    print("✅ SUCCESS: เชื่อมต่อ Supabase Client สำเร็จ!")
+    print("✅ SUCCESS: เชื่อมต่อ Supabase Client สำเร็จ แล้วครับ! ")
 except Exception as e:
     print(f"❌ ERROR Supabase Connection: {str(e)}")
     supabase = None
