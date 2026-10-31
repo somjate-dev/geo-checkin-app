@@ -13,7 +13,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'checkin-super-secret-key-2026')
 
 # 2. เชื่อมต่อ Cloudinary
 cloudinary.config(
-    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'Root'),
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 't6gzttll'),
     api_key = os.environ.get('CLOUDINARY_API_KEY', '411612461233476'),
     api_secret = os.environ.get('CLOUDINARY_API_SECRET', '911GPlaZWRy-Hax0IVa9SLqHel0'),
     secure = True
