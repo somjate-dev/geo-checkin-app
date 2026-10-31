@@ -29,20 +29,22 @@ cloudinary.config(
 SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://xhakpthsysjkwdoptbmy.supabase.c').strip()
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoYWtwdGhzeXNqa3dkb3B0Ym15Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjQ3NjAyMCwiZXhwIjoyMTA4MDUyMDIwfQ.64qJFSqdUvo9bdafkwyDOnRlfHIUPwGRjzAkb_u0Hgo').strip()
 
-# ตัดส่วนเกินของ URL อัตโนมัติ (หากเผลอก๊อปปี้เอา /rest/v1/ ติดมา)
-if "/rest/v1" in SUPABASE_URL:
-    SUPABASE_URL = SUPABASE_URL.split("/rest/v1")[0].strip()
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# สร้าง Client
-try:
-    if SUPABASE_URL and SUPABASE_KEY:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print("✅ SUCCESS: เชื่อมต่อ Supabase Client สำเร็จ!")
-    else:
-        raise ValueError("SUPABASE_URL หรือ SUPABASE_KEY มีค่าว่างเปล่า")
-except Exception as e:
-    print(f"❌ ERROR ในการเชื่อมต่อ Supabase: {str(e)}")
-    supabase = None
+# # ตัดส่วนเกินของ URL อัตโนมัติ (หากเผลอก๊อปปี้เอา /rest/v1/ ติดมา)
+# if "/rest/v1" in SUPABASE_URL:
+#     SUPABASE_URL = SUPABASE_URL.split("/rest/v1")[0].strip()
+
+# # สร้าง Client
+# try:
+#     if SUPABASE_URL and SUPABASE_KEY:
+#         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+#         print("✅ SUCCESS: เชื่อมต่อ Supabase Client สำเร็จ!")
+#     else:
+#         raise ValueError("SUPABASE_URL หรือ SUPABASE_KEY มีค่าว่างเปล่า")
+# except Exception as e:
+#     print(f"❌ ERROR ในการเชื่อมต่อ Supabase: {str(e)}")
+#     supabase = None
     
 # Decorators สิทธิ์การใช้งาน
 def login_required(f):
