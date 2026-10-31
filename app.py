@@ -44,26 +44,6 @@ except Exception as e:
     print(f"❌ ERROR ในการเชื่อมต่อ Supabase: {str(e)}")
     supabase = None
     
-# # 3. เชื่อมต่อ Supabase
-# SUPABASE_URL = os.environ.get('https://xhakpthsysjkwdoptbmy.supabase.co')
-# SUPABASE_KEY = os.environ.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoYWtwdGhzeXNqa3dkb3B0Ym15Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjQ3NjAyMCwiZXhwIjoyMTA4MDUyMDIwfQ.64qJFSqdUvo9bdafkwyDOnRlfHIUPwGRjzAkb_u0Hgo')
-
-
-# supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
-
-# # 3. เชื่อมต่อ Supabase
-# SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://ssbkkejpaduiwmfzijsb.supabase.co')
-# SUPABASE_KEY = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYmtrZWpwYWR1aXdtZnppanNiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzI3MjA1NiwiZXhwIjoyMTA4ODQ4MDU2fQ.MnPA2R2GPS0gGOLk9M3k3mfClsevWOd_gnDFNwQW3M4')
-
-# # สร้าง Client โดยตรง ไม่ต้องมี if-else ให้เสี่ยงเป็น None
-# try:
-#     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-#     print("✅ Supabase connected successfully")
-# except Exception as e:
-#     print(f"❌ Supabase connection error: {e}")
-#     supabase = None
-
-
 # Decorators สิทธิ์การใช้งาน
 def login_required(f):
     @wraps(f)
@@ -88,29 +68,11 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         # ค้นหาผู้ใช้งานจาก Supabase
         response = supabase.table('users').select('*').eq('username', username).execute()
         users = response.data
 
-
-
- # เปรียบเทียบรหัสผ่าน
-        # if users and check_password_hash(users[0]['password'], password):
-        #     session['username'] = users[0]['username']
-        #     # 💡 แก้ไขจุดนี้: ใช้ .get('role', 'user') แทน เพื่อป้องกัน KeyError
-        #     session['role'] = users[0].get('role', 'user')
-
-        if users and users[0]['password'] == password:
-            session['username'] = users[0]['username']
-            session['role'] = users[0].get('role', 'user')
-
-            if session['role'] == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            return redirect(url_for('index'))
-        else:
-            return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
-               
         if users and check_password_hash(users[0]['password'], password):
             session['username'] = users[0]['username']
             session['role'] = users[0]['role']
@@ -119,35 +81,8 @@ def login():
             return redirect(url_for('index'))
         else:
             return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
-            
-    return render_template('login.html')
-# @app.route('/login', methods=['GET', 'POST'])
-# def login():
-#     if request.method == 'POST':
-#         username = request.form.get('username')
-#         password = request.form.get('password')
-        
-#         # ตรวจสอบว่า supabase พร้อมใช้งานหรือไม่
-#         if not supabase:
-#             return render_template('login.html', error='ระบบฐานข้อมูลยังไม่พร้อมใช้งาน (กรุณาตรวจสอบ Environment Variables)')
-            
-#         try:
-#             response = supabase.table('users').select('*').eq('username', username).execute()
-#             users = response.data
-            
-#             if users and check_password_hash(users[0]['password'], password):
-#                 session['username'] = users[0]['username']
-#                 session['role'] = users[0]['role']
-#                 if users[0]['role'] == 'admin':
-#                     return redirect(url_for('admin_dashboard'))
-#                 return redirect(url_for('index'))
-#             else:
-#                 return render_template('login.html', error='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
-#         except Exception as e:
-#             return render_template('login.html', error=f'เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล: {str(e)}')
-            
-#     return render_template('login.html')
 
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
@@ -166,7 +101,7 @@ def api_checkin():
         latitude = request.form.get('latitude')
         longitude = request.form.get('longitude')
         file = request.files.get('photo')
-        
+
         if not latitude or not longitude:
             return jsonify({'success': False, 'message': 'ไม่พบพิกัดตำแหน่ง GPS'}), 400
         if not file or file.filename == '':
@@ -183,7 +118,7 @@ def api_checkin():
             ]
         )
         image_url = upload_result.get('secure_url')
-        
+
         # บันทึกข้อมูลลง Supabase PostgreSQL
         new_record = {
             'username': session['username'],
@@ -192,9 +127,9 @@ def api_checkin():
             'photo_url': image_url
         }
         supabase.table('checkins').insert(new_record).execute()
-            
+
         return jsonify({'success': True, 'message': 'เช็คอินและบันทึกข้อมูลถาวรสำเร็จ!'})
-        
+
     except Exception as e:
         return jsonify({'success': False, 'message': f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
