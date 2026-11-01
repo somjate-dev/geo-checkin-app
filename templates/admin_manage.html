@@ -71,7 +71,7 @@
                         <th><a href="?sort=username&order={{ 'desc' if sort_col=='username' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">ชื่อผู้ใช้งาน (Username) {% if sort_col=='username' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
                         <th>ชื่อ</th>
                         <th>นามสกุล</th>
-                        <th>รหัสผ่าน</th>
+                        <!-- <th>รหัสผ่าน</th> -->
                         <th><a href="?sort=role&order={{ 'desc' if sort_col=='role' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">สิทธิ์ใช้งาน {% if sort_col=='role' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
                         <th class="text-end pe-3">จัดการ</th>
                     </tr>
@@ -83,7 +83,7 @@
                         <td><span class="badge bg-secondary-subtle text-secondary fw-semibold">{{ user.username }}</span></td>
                         <td>{{ user.firstname or '-' }}</td>
                         <td>{{ user.lastname or '-' }}</td>
-                        <td><code>{{ user.password }}</code></td>
+                        <!-- <td><code>{{ user.password }}</code></td> -->
                         <td>
                             <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-success{% endif %}">
                                 {{ user.role }}
