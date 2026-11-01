@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบตรวจสอบการเช็คอิน (Admin)</title>
+    <title>ระบบตรวจสอบการเช็คอิน (Admin Dashboard)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,15 +15,32 @@
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-dark bg-dark px-3 shadow">
-    <a class="navbar-brand fw-bold" href="#"><i class="fa-solid fa-shield-halved text-warning me-2"></i>Admin Dashboard</a>
-    <div class="ms-auto text-white">
-        <span class="me-3 small"><i class="fa-solid fa-user me-1"></i>{{ username }}</span>
-        <a href="/logout" class="btn btn-sm btn-outline-light rounded-pill">ออกจากระบบ</a>
+<!-- Navbar สลับเมนู -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3 shadow">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="#"><i class="fa-solid fa-shield-halved text-warning me-2"></i>Admin Panel</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="adminNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/admin"><i class="fa-solid fa-chart-line me-1"></i>แดชบอร์ด</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin/manage"><i class="fa-solid fa-users-gear me-1"></i>จัดการผู้ใช้งาน</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center text-white">
+                <span class="me-3 small"><i class="fa-solid fa-user me-1"></i>{{ username }}</span>
+                <a href="/logout" class="btn btn-sm btn-outline-light rounded-pill">ออกจากระบบ</a>
+            </div>
+        </div>
     </div>
 </nav>
 
 <div class="container-fluid py-4 px-md-5">
+    <!-- แผนที่พิกัดรวม -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
@@ -33,17 +50,34 @@
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="card-header bg-white py-3 border-0">
+    <!-- ตารางบันทึกการเช็คอิน -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white py-3 border-0 d-flex flex-wrap align-items-center justify-content-between gap-3">
             <h5 class="fw-bold mb-0 text-secondary"><i class="fa-solid fa-list-check me-2"></i>รายการเช็คอินล่าสุด</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <!-- ฟอร์มค้นหา -->
+                <form method="GET" action="/admin" class="d-flex">
+                    <input type="text" name="search" class="form-control form-control-sm me-2 rounded-pill" placeholder="ค้นหาผู้ใช้/พิกัด..." value="{{ search_query }}">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">ค้นหา</button>
+                    {% if search_query %}
+                    <a href="/admin" class="btn btn-sm btn-outline-secondary rounded-pill ms-1">ล้าง</a>
+                    {% endif %}
+                </form>
+                <!-- ปุ่ม Export Excel -->
+                <a href="/admin/export" class="btn btn-sm btn-success rounded-pill px-3">
+                    <i class="fa-solid fa-file-excel me-1"></i>ดาวน์โหลด Excel
+                </a>
+            </div>
         </div>
+        
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3">ลำดับ</th>
-                        <th>ผู้ใช้งาน</th>
-                        <th>วัน/เวลา</th>
+                        <th class="ps-3"><a href="?sort=id&order={{ 'desc' if sort_col=='id' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">ลำดับ {% if sort_col=='id' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
+                        <th>ชื่อ-นามสกุล</th>
+                        <th><a href="?sort=username&order={{ 'desc' if sort_col=='username' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">ชื่อผู้ใช้ (Username) {% if sort_col=='username' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
+                        <th><a href="?sort=created_at&order={{ 'desc' if sort_col=='created_at' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">วัน/เวลา {% if sort_col=='created_at' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
                         <th>พิกัด (Lat, Lng)</th>
                         <th>รูปถ่าย</th>
                         <th class="text-center pe-3">แผนที่ภายนอก</th>
@@ -53,6 +87,7 @@
                     {% for item in checkins %}
                     <tr>
                         <td class="ps-3 fw-bold text-muted">#{{ item.id }}</td>
+                        <td><span class="fw-bold">{{ item.fullname }}</span></td>
                         <td><span class="badge bg-primary-subtle text-primary fw-semibold px-2 py-1"><i class="fa-solid fa-user me-1"></i>{{ item.username }}</span></td>
                         <td>{{ item.created_at }}</td>
                         <td><code>{{ "%.5f"|format(item.latitude) }}, {{ "%.5f"|format(item.longitude) }}</code></td>
@@ -65,18 +100,39 @@
                         </td>
                         <td class="text-center pe-3">
                             <a href="https://www.google.com/maps?q={{ item.latitude }},{{ item.longitude }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill">
-                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>เปิดใน Google Maps
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Google Maps
                             </a>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">ยังไม่มีข้อมูลการเช็คอินในระบบ</td>
+                        <td colspan="7" class="text-center py-4 text-muted">ยังไม่มีข้อมูลการเช็คอินในระบบ</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        
+        <!-- แบ่งหน้าตาราง (Pagination 10 รายการ) -->
+        {% if total_pages > 1 %}
+        <div class="card-footer bg-white py-3 border-0 d-flex justify-content-center">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page - 1 }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">ก่อนหน้า</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                    <li class="page-item {% if p == page %}active{% endif %}">
+                        <a class="page-link" href="?page={{ p }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">{{ p }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page + 1 }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">ถัดไป</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -100,7 +156,7 @@
         new bootstrap.Modal(document.getElementById('imageModal')).show();
     }
 
-    // วาดหมุดทั้งหมดลงบนแผนที่
+    // วาดหมุดทั้งหมดลงบนแผนที่ Leaflet
     var adminMap = L.map('adminMap').setView([13.7563, 100.5018], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
@@ -109,7 +165,7 @@
     var bounds = [];
     {% for item in checkins %}
         var m = L.marker([{{ item.latitude }}, {{ item.longitude }}]).addTo(adminMap);
-        m.bindPopup("<b>{{ item.username }}</b><br>{{ item.created_at }}");
+        m.bindPopup("<b>{{ item.username }} (" + "{{ item.fullname }}" + ")</b><br>{{ item.created_at }}");
         bounds.push([{{ item.latitude }}, {{ item.longitude }}]);
     {% endfor %}
 

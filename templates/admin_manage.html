@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการผู้ใช้งาน | Admin Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-light">
+
+<!-- Navbar สลับเมนู -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3 shadow">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="#"><i class="fa-solid fa-shield-halved text-warning me-2"></i>Admin Panel</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="adminNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin"><i class="fa-solid fa-chart-line me-1"></i>แดชบอร์ด</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/admin/manage"><i class="fa-solid fa-users-gear me-1"></i>จัดการผู้ใช้งาน</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center text-white">
+                <span class="me-3 small"><i class="fa-solid fa-user me-1"></i>{{ username }}</span>
+                <a href="/logout" class="btn btn-sm btn-outline-light rounded-pill">ออกจากระบบ</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h3 class="fw-bold text-dark mb-0"><i class="fa-solid fa-users-gear text-primary me-2"></i>ระบบจัดการผู้ใช้งาน</h3>
+        <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <i class="fa-solid fa-user-plus me-1"></i>เพิ่มผู้ใช้งานใหม่
+        </button>
+    </div>
+
+    <!-- บล็อกกล่องค้นหาผู้ใช้งาน -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-body p-3">
+            <form method="GET" action="/admin/manage" class="row g-2 align-items-center">
+                <div class="col-md-9">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" name="search" class="form-control border-start-0" placeholder="ค้นหา ชื่อผู้ใช้, ชื่อ หรือ นามสกุล..." value="{{ search_query }}">
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill">ค้นหา</button>
+                    {% if search_query %}
+                    <a href="/admin/manage" class="btn btn-outline-secondary rounded-pill">ล้าง</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ตารางรายชื่อผู้ใช้ -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3"><a href="?sort=id&order={{ 'desc' if sort_col=='id' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">ID {% if sort_col=='id' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
+                        <th><a href="?sort=username&order={{ 'desc' if sort_col=='username' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">ชื่อผู้ใช้งาน (Username) {% if sort_col=='username' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
+                        <th>ชื่อ</th>
+                        <th>นามสกุล</th>
+                        <th>รหัสผ่าน</th>
+                        <th><a href="?sort=role&order={{ 'desc' if sort_col=='role' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">สิทธิ์ใช้งาน {% if sort_col=='role' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
+                        <th class="text-end pe-3">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td class="ps-3 text-muted fw-semibold">#{{ user.id }}</td>
+                        <td><span class="badge bg-secondary-subtle text-secondary fw-semibold">{{ user.username }}</span></td>
+                        <td>{{ user.firstname or '-' }}</td>
+                        <td>{{ user.lastname or '-' }}</td>
+                        <td><code>{{ user.password }}</code></td>
+                        <td>
+                            <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-success{% endif %}">
+                                {{ user.role }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-3">
+                            <button class="btn btn-sm btn-outline-warning rounded-pill me-1" onclick="editUser('{{ user.id }}', '{{ user.username }}', '{{ user.firstname or '' }}', '{{ user.lastname or '' }}', '{{ user.password }}', '{{ user.role }}')">
+                                <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                            </button>
+                            <a href="/admin/manage/delete/{{ user.id }}" class="btn btn-sm btn-outline-danger rounded-pill" onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้ {{ user.username }}?')">
+                                <i class="fa-solid fa-trash-can"></i> ลบ
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">ไม่พบข้อมูลผู้ใช้งานในระบบ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- แบ่งหน้าตาราง (Pagination 10 รายการ) -->
+        {% if total_pages > 1 %}
+        <div class="card-footer bg-white py-3 border-0 d-flex justify-content-center">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page - 1 }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">ก่อนหน้า</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                    <li class="page-item {% if p == page %}active{% endif %}">
+                        <a class="page-link" href="?page={{ p }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">{{ p }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page + 1 }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">ถัดไป</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal เพิ่มผู้ใช้งานใหม่ -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="/admin/manage/add" class="modal-content border-0 rounded-4">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-plus text-primary me-2"></i>เพิ่มผู้ใช้งานใหม่</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">ชื่อผู้ใช้งาน (Username)</label>
+                    <input type="text" name="username" class="form-control" required placeholder="ตัวพิมพ์เล็ก ภาษาอังกฤษ/ตัวเลข">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">ชื่อ (Firstname)</label>
+                    <input type="text" name="firstname" class="form-control" placeholder="ชื่อจริง">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">นามสกุล (Lastname)</label>
+                    <input type="text" name="lastname" class="form-control" placeholder="นามสกุล">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">รหัสผ่าน (Password)</label>
+                    <input type="text" name="password" class="form-control" required placeholder="กำหนดรหัสผ่านโดยตรง">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">สิทธิ์การใช้งาน (Role)</label>
+                    <select name="role" class="form-select">
+                        <option value="user">user (พนักงานทั่วไป)</option>
+                        <option value="admin">admin (ผู้ดูแลระบบ)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary rounded-pill px-4">บันทึกข้อมูล</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal แก้ไขข้อมูลผู้ใช้งาน -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" id="editForm" class="modal-content border-0 rounded-4">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-pen text-warning me-2"></i>แก้ไขข้อมูลผู้ใช้งาน</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">ชื่อผู้ใช้งาน (Username)</label>
+                    <input type="text" name="username" id="edit_username" class="form-control" required readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">ชื่อ (Firstname)</label>
+                    <input type="text" name="firstname" id="edit_firstname" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">นามสกุล (Lastname)</label>
+                    <input type="text" name="lastname" id="edit_lastname" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">รหัสผ่าน (Password)</label>
+                    <input type="text" name="password" id="edit_password" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">สิทธิ์การใช้งาน (Role)</label>
+                    <select name="role" id="edit_role" class="form-select">
+                        <option value="user">user (พนักงานทั่วไป)</option>
+                        <option value="admin">admin (ผู้ดูแลระบบ)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="submit" class="btn btn-warning rounded-pill px-4">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function editUser(id, username, firstname, lastname, password, role) {
+        $('#editForm').attr('action', '/admin/manage/edit/' + id);
+        $('#edit_username').val(username);
+        $('#edit_firstname').val(firstname);
+        $('#edit_lastname').val(lastname);
+        $('#edit_password').val(password);
+        $('#edit_role').val(role);
+        new bootstrap.Modal(document.getElementById('editUserModal')).show();
+    }
+</script>
+</body>
+</html>
