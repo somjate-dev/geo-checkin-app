@@ -40,6 +40,17 @@ except Exception as e:
     print(f"❌ ERROR ในการเชื่อมต่อ Supabase: {str(e)}")
     supabase = None
 
+# ฟังก์ชันแปลง Format วันเวลา
+def format_timestamp(iso_str):
+    if not iso_str:
+        return ""
+    try:
+        clean_str = iso_str.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(clean_str)
+        return dt.strftime("%Y-%m-%d : %H:%M:%S")
+    except Exception:
+        return iso_str
+
 # Decorators สิทธิ์การใช้งาน
 def login_required(f):
     @wraps(f)
@@ -73,7 +84,7 @@ def login():
             response = supabase.table('users').select('*').eq('username', username).execute()
             users = response.data
             
-            # ตรวจสอบรหัสผ่านแบบตรง ๆ ไม่เข้ารหัส (Plaintext)
+            # ตรวจสอบรหัสผ่านแบบตรง ๆ ไม่เข้ารหัส (Plaintext) ด้วยเครื่องหมาย ==
             if users and users[0]['password'] == password:
                 session['username'] = users[0]['username']
                 session['role'] = users[0].get('role', 'user') # ป้องกัน KeyError 'role'
@@ -137,17 +148,18 @@ def api_checkin():
     except Exception as e:
         return jsonify({'success': False, 'message': f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
-# 2. admin_dashboard (หน้า admin.html)
+# 2. admin_dashboard (หน้า admin.html เดิม เพิ่มเติมฟังก์ชันและ firstname+lastname)
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
+    # รับค่าการค้นหา, การจัดเรียง, และการแบ่งหน้า
     search_query = request.args.get('search', '').strip()
     sort_col = request.args.get('sort', 'id')
     sort_order = request.args.get('order', 'desc')
     page = int(request.args.get('page', 1))
     per_page = 10
 
-    # ดึงข้อมูลผู้ใช้เพื่อ map รวม firstname + lastname
+    # ดึงข้อมูลผู้ใช้ทั้งหมดเพื่อเชื่อมโยงหา firstname + lastname
     user_response = supabase.table('users').select('username, firstname, lastname').execute()
     user_map = {}
     for u in user_response.data:
@@ -160,9 +172,10 @@ def admin_dashboard():
     response = supabase.table('checkins').select('*').execute()
     checkins_data = response.data
 
-    # รวมฟิลด์ชื่อ-นามสกุล
+    # ผสมและเสริมข้อมูล firstname + lastname และแปลง Format วันเวลา
     for item in checkins_data:
         item['fullname'] = user_map.get(item['username'], item['username'])
+        item['created_at'] = format_timestamp(item.get('created_at'))
 
     # ค้นหาข้อมูล (Search)
     if search_query:
@@ -172,7 +185,8 @@ def admin_dashboard():
             if (search_query_lower in item['username'].lower() or 
                 search_query_lower in item['fullname'].lower() or
                 search_query_lower in str(item['latitude']) or
-                search_query_lower in str(item['longitude'])):
+                search_query_lower in str(item['longitude']) or
+                search_query_lower in item['created_at'].lower()):
                 filtered_checkins.append(item)
         checkins_data = filtered_checkins
 
@@ -181,7 +195,7 @@ def admin_dashboard():
     if sort_col in ['id', 'username', 'created_at']:
         checkins_data.sort(key=lambda x: x.get(sort_col, ''), reverse=reverse_order)
 
-    # แบ่งหน้า (Pagination 10 รายการ)
+    # แบ่งหน้า (Pagination)
     total_records = len(checkins_data)
     total_pages = (total_records + per_page - 1) // per_page
     start_idx = (page - 1) * per_page
@@ -230,7 +244,7 @@ def admin_manage():
     if sort_col in ['id', 'username', 'role']:
         users_data.sort(key=lambda x: x.get(sort_col, ''), reverse=reverse_order)
 
-    # แบ่งหน้า (Pagination 10 รายการ)
+    # แบ่งหน้า (Pagination)
     total_records = len(users_data)
     total_pages = (total_records + per_page - 1) // per_page
     start_idx = (page - 1) * per_page
@@ -312,6 +326,7 @@ def admin_delete_user(user_id):
 @admin_required
 def admin_export_excel():
     try:
+        # ดึงข้อมูลมาสร้าง map ชื่อจริง-นามสกุล
         user_response = supabase.table('users').select('username, firstname, lastname').execute()
         user_map = {}
         for u in user_response.data:
@@ -320,14 +335,19 @@ def admin_export_excel():
             fullname = f"{fname} {lname}".strip()
             user_map[u['username']] = fullname if fullname else u['username']
 
+        # ดึงประวัติเช็คอิน
         response = supabase.table('checkins').select('*').execute()
         checkins_data = response.data
 
+        # ผสมฟิลด์ชื่อจริง-นามสกุล และจัด Format วันเวลาลง Excel ให้ตรงกัน
         for item in checkins_data:
             item['Fullname'] = user_map.get(item['username'], item['username'])
+            item['created_at'] = format_timestamp(item.get('created_at'))
 
+        # แปลงเป็น DataFrame และปรับแต่งหัวข้อ
         df = pd.DataFrame(checkins_data)
         
+        # จัดการเลือกเฉพาะคอลัมน์ที่ต้องการเพื่อความสวยงาม
         export_columns = {
             'id': 'ลำดับ',
             'username': 'ชื่อผู้ใช้งาน (Username)',
@@ -335,12 +355,14 @@ def admin_export_excel():
             'latitude': 'ละติจูด (Latitude)',
             'longitude': 'ลองจิจูด (Longitude)',
             'photo_url': 'ลิงก์รูปถ่าย (Photo Link)',
-            'created_at': 'วัน/เวลา'
+            'created_at': 'วัน/เวลา (Date/Time)'
         }
         
+        # คัดกรองและเรียงสลับคอลัมน์ใหม่ตามโครงสร้างที่ต้องการ
         df = df.rename(columns=export_columns)
         df_final = df[[val for val in export_columns.values() if val in df.columns]]
 
+        # บันทึกเป็นไบนารี Excel stream
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df_final.to_excel(writer, index=False, sheet_name='Checkin_Reports')
