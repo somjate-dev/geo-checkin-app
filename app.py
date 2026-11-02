@@ -41,15 +41,38 @@ except Exception as e:
     supabase = None
 
 # ฟังก์ชันแปลง Format วันเวลา
+# def format_stamp(iso_str):
+#     if not iso_str:
+#         return ""
+#     try:
+#         clean_str = iso_str.replace("Z", "+00:00")
+#         dt = datetime.fromisoformat(clean_str)
+#         return dt.strftime("%Y-%m-%d : %H:%M:%S")
+#     except Exception:
+#         return iso_str
+from datetime import datetime, timezone, timedelta
+
 def format_timestamp(iso_str):
     if not iso_str:
         return ""
     try:
+        # แปลงข้อความ ISO 8601 ให้รองรับ Timezone Offset
         clean_str = iso_str.replace("Z", "+00:00")
         dt = datetime.fromisoformat(clean_str)
-        return dt.strftime("%Y-%m-%d : %H:%M:%S")
+        
+        # หากตัวแปรวันเวลาที่ดึงมาไม่มีข้อมูล Timezone (เป็น Naive Datetime) ให้ตั้งค่าเริ่มต้นเป็น UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+            
+        # แปลงค่าเขตเวลาไปเป็นเวลาประเทศไทย (UTC+7) อัตโนมัติ
+        thailand_tz = timezone(timedelta(hours=7))
+        dt_thailand = dt.astimezone(thailand_tz)
+        
+        # แสดงผลลัพธ์ในรูปแบบ "yyyy-MM-dd : HH:mm:ss" ตามที่คุณกำหนด
+        return dt_thailand.strftime("%Y-%m-%d : %H:%M:%S")
     except Exception:
         return iso_str
+
 
 # Decorators สิทธิ์การใช้งาน
 def login_required(f):
