@@ -356,17 +356,5 @@ def admin_export_excel():
     except Exception as e:
         return f"เกิดข้อผิดพลาดในการดาวน์โหลด Excel: {str(e)}", 500
 
-# 💡 ฟังก์ชันแปลง Format วันเวลาตามที่คุณต้องการ
-def format_timestamp(iso_str):
-    if not iso_str:
-        return ""
-    try:
-        clean_str = iso_str.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(clean_str)
-        return dt.strftime("%Y-%m-%d : %H:%M:%S") # ⬅️ ยึดรูปแบบ "yyyy-MM-dd : HH:mm:ss" เป๊ะ ๆ
-    except Exception:
-        return iso_str
-
-
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
