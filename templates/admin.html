@@ -20,16 +20,16 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3 shadow">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="#"><i class="fa-solid fa-shield-halved text-warning me-2"></i>Admin Panel</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#Navbar">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="adminNavbar">
+        <div class="collapse navbar-collapse" id="Navbar">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link active" href="/admin"><i class="fa-solid fa-chart-line me-1"></i>แดชบอร์ด</a>
+                    <a class="nav-link active" href="/"><i class="fa-solid fa-chart-line me-1"></i>แดชบอร์ด</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/admin/manage"><i class="fa-solid fa-users-gear me-1"></i>จัดการผู้ใช้งาน</a>
+                    <a class="nav-link" href="//manage"><i class="fa-solid fa-users-gear me-1"></i>จัดการผู้ใช้งาน</a>
                 </li>
             </ul>
             <div class="d-flex align-items-center text-white">
@@ -46,7 +46,7 @@
         <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 p-3">
                 <h5 class="fw-bold mb-3"><i class="fa-solid fa-map me-2 text-primary"></i>ภาพรวมพิกัดการเช็คอินทั้งหมด</h5>
-                <div id="adminMap"></div>
+                <div id="Map"></div>
             </div>
         </div>
     </div>
@@ -54,7 +54,7 @@
     <!-- ฟิลเตอร์การค้นหาและคัดกรองข้อมูลเชิงลึก -->
     <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
         <h5 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-filter me-2 text-primary"></i>ตัวคัดกรองข้อมูลเชิงลึก (Filters)</h5>
-        <form method="GET" action="/admin">
+        <form method="GET" action="/">
             <div class="row g-3">
                 <!-- 1. ค้นหาทั่วไป -->
                 <div class="col-lg-4 col-md-6">
@@ -81,7 +81,7 @@
                     <!-- แก้เป็น: เพิ่มเงื่อนไข if u.role != 'admin' -->
                     <div class="user-checklist">
                         {% for u in users_list %}
-                            {% if u.role != 'admin' %}
+                            {% if u.username != 'admin' %}
                             <div class="form-check form-check-sm mb-1">
                                 <input class="form-check-input" type="checkbox" name="selected_users" value="{{ u.username }}" id="chk_{{ u.username }}"
                                        {% if u.username in selected_users %}checked{% endif %}>
