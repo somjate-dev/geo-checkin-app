@@ -11,6 +11,7 @@
         .thumb-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
         .thumb-img:hover { transform: scale(1.1); }
         #adminMap { height: 350px; border-radius: 12px; }
+        .user-checklist { max-height: 150px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 8px; background: #fff; }
     </style>
 </head>
 <body class="bg-light">
@@ -50,128 +51,43 @@
         </div>
     </div>
 
-    <!-- ตารางบันทึกการเช็คอิน -->
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
-        <div class="card-header bg-white py-3 border-0 d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <h5 class="fw-bold mb-0 text-secondary"><i class="fa-solid fa-list-check me-2"></i>รายการเช็คอินล่าสุด</h5>
-            <div class="d-flex flex-wrap gap-2">
-                <!-- ฟอร์มค้นหา -->
-                <form method="GET" action="/admin" class="d-flex">
-                    <input type="text" name="search" class="form-control form-control-sm me-2 rounded-pill" placeholder="ค้นหาผู้ใช้/พิกัด..." value="{{ search_query }}">
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">ค้นหา</button>
-                    {% if search_query %}
-                    <a href="/admin" class="btn btn-sm btn-outline-secondary rounded-pill ms-1">ล้าง</a>
-                    {% endif %}
-                </form>
-                <!-- ปุ่ม Export Excel -->
-                <a href="/admin/export" class="btn btn-sm btn-success rounded-pill px-3">
-                    <i class="fa-solid fa-file-excel me-1"></i>ดาวน์โหลด Excel
-                </a>
-            </div>
-        </div>
-        
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-3"><a href="?sort=id&order={{ 'desc' if sort_col=='id' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">ลำดับ {% if sort_col=='id' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
-                        <th>ชื่อ-นามสกุล</th>
-                        <th><a href="?sort=username&order={{ 'desc' if sort_col=='username' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">ชื่อผู้ใช้ (Username) {% if sort_col=='username' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
-                        <th><a href="?sort=created_at&order={{ 'desc' if sort_col=='created_at' and sort_order=='asc' else 'asc' }}&search={{ search_query }}" class="text-decoration-none text-dark">วัน/เวลา {% if sort_col=='created_at' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}</a></th>
-                        <th>พิกัด (Lat, Lng)</th>
-                        <th>รูปถ่าย</th>
-                        <th class="text-center pe-3">แผนที่ภายนอก</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in checkins %}
-                    <tr>
-                        <td class="ps-3 fw-bold text-muted">#{{ item.id }}</td>
-                        <td><span class="fw-bold">{{ item.fullname }}</span></td>
-                        <td><span class="badge bg-primary-subtle text-primary fw-semibold px-2 py-1"><i class="fa-solid fa-user me-1"></i>{{ item.username }}</span></td>
-                        <td>{{ item.created_at }}</td>
-                        <td><code>{{ "%.5f"|format(item.latitude) }}, {{ "%.5f"|format(item.longitude) }}</code></td>
-                        <td>
-                            <img src="{{ item.photo_url }}"
-                                class="thumb-img shadow-sm"
-                                onclick="showModalImage('{{ item.photo_url }}')"
-                                alt="รูปถ่ายเช็คอิน"
-                                loading="lazy">
-                        </td>
-                        <td class="text-center pe-3">
-                            <a href="https://www.google.com/maps?q={{ item.latitude }},{{ item.longitude }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill">
-                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Google Maps
-                            </a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">ยังไม่มีข้อมูลการเช็คอินในระบบ</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- แบ่งหน้าตาราง (Pagination 10 รายการ) -->
-        {% if total_pages > 1 %}
-        <div class="card-footer bg-white py-3 border-0 d-flex justify-content-center">
-            <nav>
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
-                        <a class="page-link" href="?page={{ page - 1 }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">ก่อนหน้า</a>
-                    </li>
-                    {% for p in range(1, total_pages + 1) %}
-                    <li class="page-item {% if p == page %}active{% endif %}">
-                        <a class="page-link" href="?page={{ p }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">{{ p }}</a>
-                    </li>
-                    {% endfor %}
-                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-                        <a class="page-link" href="?page={{ page + 1 }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}">ถัดไป</a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-        {% endif %}
-    </div>
-</div>
+    <!-- ฟิลเตอร์การค้นหาและคัดกรองข้อมูลเชิงลึก -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-filter me-2 text-primary"></i>ตัวคัดกรองข้อมูลเชิงลึก (Filters)</h5>
+        <form method="GET" action="/admin">
+            <div class="row g-3">
+                <!-- 1. ค้นหาทั่วไป -->
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label small fw-bold text-muted">ค้นหาพิกัด / ข้อความ</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="ระบุพิกัด, ชื่อ หรือข้อความ..." value="{{ search_query }}">
+                    </div>
+                </div>
 
-<!-- Modal แสดงรูปขนาดเต็ม -->
-<div class="modal fade" id="imageModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 overflow-hidden">
-            <div class="modal-body p-0">
-                <img id="modalImg" src="" class="img-fluid w-100" alt="รูปถ่ายขนาดเต็ม">
-            </div>
-        </div>
-    </div>
-</div>
+                <!-- 2. ช่วงระยะเวลาระหว่างวันที่ -->
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label small fw-bold text-muted">ช่วงวันที่เช็คอิน (เริ่มต้น - สิ้นสุด)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+                        <span class="input-group-text bg-light">ถึง</span>
+                        <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+                    </div>
+                </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    function showModalImage(src) {
-        $('#modalImg').attr('src', src);
-        new bootstrap.Modal(document.getElementById('imageModal')).show();
-    }
-
-    // วาดหมุดทั้งหมดลงบนแผนที่ Leaflet
-    var adminMap = L.map('adminMap').setView([13.7563, 100.5018], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(adminMap);
-
-    var bounds = [];
-    {% for item in checkins %}
-        var m = L.marker([{{ item.latitude }}, {{ item.longitude }}]).addTo(adminMap);
-        m.bindPopup("<b>{{ item.username }} (" + "{{ item.fullname }}" + ")</b><br>{{ item.created_at }}");
-        bounds.push([{{ item.latitude }}, {{ item.longitude }}]);
-    {% endfor %}
-
-    if (bounds.length > 0) {
-        adminMap.fitBounds(bounds, { padding: [50, 50] });
-    }
-</script>
-</body>
-</html>
+                <!-- 3. คัดกรองชื่อพนักงานแบบ Checklist -->
+                <div class="col-lg-4 col-12">
+                    <label class="form-label small fw-bold text-muted">คัดเลือกรายชื่อพนักงาน (Checklist)</label>
+                    <div class="user-checklist">
+                        {% for u in users_list %}
+                        <div class="form-check form-check-sm mb-1">
+                            <input class="form-check-input" type="checkbox" name="selected_users" value="{{ u.username }}" id="chk_{{ u.username }}"
+                                   {% if u.username in selected_users %}checked{% endif %}>
+                            <label class="form-check-label small" for="chk_{{ u.username }}">
+                                {{ u.firstname }} {{ u.lastname }} ({{ u.username }})
+                            </label>
+                        </div>
+                        {% else %}
+                        <div class="text-muted small py-2">ไม่มีข้อมูลพนักงาน</div>
+                        {% endfor %}
+                    </
