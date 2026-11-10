@@ -90,4 +90,145 @@
                         {% else %}
                         <div class="text-muted small py-2">ไม่มีข้อมูลพนักงาน</div>
                         {% endfor %}
-                    </
+                    </div>
+                </div>
+            </div>
+
+            <!-- ปุ่มดำเนินการควบคุมคัดกรอง -->
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4"><i class="fa-solid fa-arrows-rotate me-1"></i>ประมวลผลข้อมูล</button>
+                <a href="/admin" class="btn btn-sm btn-outline-secondary rounded-pill px-3">ล้างตัวกรองทั้งหมด</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- ตารางบันทึกการเช็คอิน -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white py-3 border-0 d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <h5 class="fw-bold mb-0 text-secondary"><i class="fa-solid fa-list-check me-2"></i>รายการเช็คอินล่าสุด (พบ {{ checkins|length }} รายการ)</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <!-- ปุ่ม Export Excel ส่งค่า Filter ไปด้วย -->
+                <a href="/admin/export?search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}" 
+                   class="btn btn-sm btn-success rounded-pill px-3">
+                    <i class="fa-solid fa-file-excel me-1"></i>ดาวน์โหลด Excel
+                </a>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">
+                            <a href="?sort=id&order={{ 'desc' if sort_col=='id' and sort_order=='asc' else 'asc' }}&search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}" class="text-decoration-none text-dark">
+                                ลำดับ {% if sort_col=='id' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th>ชื่อ-นามสกุล</th>
+                        <th>
+                            <a href="?sort=username&order={{ 'desc' if sort_col=='username' and sort_order=='asc' else 'asc' }}&search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}" class="text-decoration-none text-dark">
+                                ชื่อผู้ใช้ (Username) {% if sort_col=='username' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort=created_at&order={{ 'desc' if sort_col=='created_at' and sort_order=='asc' else 'asc' }}&search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}" class="text-decoration-none text-dark">
+                                วัน/เวลา {% if sort_col=='created_at' %}<i class="fa-solid fa-sort-{{ 'up' if sort_order=='asc' else 'down' }} text-primary"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th>พิกัด (Lat, Lng)</th>
+                        <th>รูปถ่าย</th>
+                        <th class="text-center pe-3">แผนที่ภายนอก</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in checkins %}
+                    <tr>
+                        <td class="ps-3 fw-bold text-muted">#{{ item.id }}</td>
+                        <td><span class="fw-bold">{{ item.fullname }}</span></td>
+                        <td><span class="badge bg-primary-subtle text-primary fw-semibold px-2 py-1"><i class="fa-solid fa-user me-1"></i>{{ item.username }}</span></td>
+                        <td>{{ item.formatted_time }}</td>
+                        <td><code>{{ "%.5f"|format(item.latitude) }}, {{ "%.5f"|format(item.longitude) }}</code></td>
+                        <td>
+                            <img src="{{ item.photo_url }}"
+                                class="thumb-img shadow-sm"
+                                onclick="showModalImage('{{ item.photo_url }}')"
+                                alt="รูปถ่ายเช็คอิน"
+                                loading="lazy">
+                        </td>
+                        <td class="text-center pe-3">
+                            <a href="https://www.google.com/maps?q={{ item.latitude }},{{ item.longitude }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill">
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Google Maps
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">ไม่พบข้อมูลการเช็คอินตามเงื่อนไขที่กำหนด</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- แบ่งหน้าตาราง (Pagination 10 รายการ) พร้อมส่งค่า Filters ไปด้วย -->
+        {% if total_pages > 1 %}
+        <div class="card-footer bg-white py-3 border-0 d-flex justify-content-center">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page - 1 }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}">ก่อนหน้า</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                    <li class="page-item {% if p == page %}active{% endif %}">
+                        <a class="page-link" href="?page={{ p }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}">{{ p }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page + 1 }}&sort={{ sort_col }}&order={{ sort_order }}&search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}">ถัดไป</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal แสดงรูปขนาดเต็ม -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 overflow-hidden">
+            <div class="modal-body p-0">
+                <img id="modalImg" src="" class="img-fluid w-100" alt="รูปถ่ายขนาดเต็ม">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    function showModalImage(src) {
+        $('#modalImg').attr('src', src);
+        new bootstrap.Modal(document.getElementById('imageModal')).show();
+    }
+
+    // วาดหมุดทั้งหมดลงบนแผนที่ Leaflet
+    var adminMap = L.map('adminMap').setView([13.7563, 100.5018], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(adminMap);
+
+    var bounds = [];
+    {% for item in checkins %}
+        var m = L.marker([{{ item.latitude }}, {{ item.longitude }}]).addTo(adminMap);
+        m.bindPopup("<b>{{ item.username }} (" + "{{ item.fullname }}" + ")</b><br>{{ item.formatted_time }}");
+        bounds.push([{{ item.latitude }}, {{ item.longitude }}]);
+    {% endfor %}
+
+    if (bounds.length > 0) {
+        adminMap.fitBounds(bounds, { padding: [50, 50] });
+    }
+</script>
+</body>
+</html>
