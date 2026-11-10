@@ -108,13 +108,13 @@
             <h5 class="fw-bold mb-0 text-secondary"><i class="fa-solid fa-list-check me-2"></i>รายการเช็คอินล่าสุด (พบ {{ checkins|length }} รายการ)</h5>
             <div class="d-flex flex-wrap gap-2">
                 <!-- ปุ่ม Export Excel ส่งค่า Filter ไปด้วย -->
-                <a href="/admin/export?search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}" 
+                <a href="/admin/export?search={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}{% for u in selected_users %}&selected_users={{ u }}{% endfor %}"
                    class="btn btn-sm btn-success rounded-pill px-3">
                     <i class="fa-solid fa-file-excel me-1"></i>ดาวน์โหลด Excel
                 </a>
             </div>
         </div>
-        
+
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -169,7 +169,7 @@
                 </tbody>
             </table>
         </div>
-        
+
         <!-- แบ่งหน้าตาราง (Pagination 10 รายการ) พร้อมส่งค่า Filters ไปด้วย -->
         {% if total_pages > 1 %}
         <div class="card-footer bg-white py-3 border-0 d-flex justify-content-center">
