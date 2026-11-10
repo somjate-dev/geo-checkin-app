@@ -190,7 +190,7 @@ def api_checkin():
     except Exception as e:
         return jsonify({'success': False, 'message': f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
-# 2. admin_dashboard (หน้า admin.html ค้นหาช่วงระยะเวลาเริ่มต้น-สิ้นสุด และคัดกรองพนักงาน)
+# 2. admin_dashboard (หน้า admin.html ค้นหาด้วย Checklist และ ช่วงระยะเวลา เริ่มต้น-สิ้นสุด)
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
@@ -217,7 +217,7 @@ def admin_dashboard():
     response = supabase.table('checkins').select('*').execute()
     checkins_data = response.data
 
-    # หาช่วงเวลาที่ล่าสุดในระบบ เพื่อนำมาเป็นฐานย้อนหลัง 1 เดือน
+    # หาช่วงเวลาที่ล่าสุดในระบบ เพื่อใช้คำนวณวันเริ่มต้นแบบไดนามิก (ย้อนหลัง 1 เดือนจากข้อมูลล่าสุด)
     all_dates = [get_thailand_date(c.get('created_at')) for c in checkins_data if c.get('created_at')]
     all_dates = [d for d in all_dates if d is not None]
     
@@ -226,14 +226,14 @@ def admin_dashboard():
     else:
         latest_date = datetime.now(THAILAND_TZ).date()
 
-    # ค่าเริ่มต้นย้อนหลัง 1 เดือนจากวันที่ล่าสุดในระบบ
+    # ค่าเริ่มต้นย้อนหลัง 1 เดือนจากวันที่ล่าสุดในฐานข้อมูล
     default_start_date_str = (latest_date - timedelta(days=30)).strftime('%Y-%m-%d')
     default_end_date_str = latest_date.strftime('%Y-%m-%d')
 
     start_date_str = request.args.get('start_date', default_start_date_str)
     end_date_str = request.args.get('end_date', default_end_date_str)
 
-    # แปลงเปรียบเทียบเป็นวันที่ (Date Object)
+    # แปลงเปรียบเทียบเป็นวันที่ (Date Object) เพื่อความถูกต้องแม่นยำ 100%
     try:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
     except Exception:
@@ -246,7 +246,7 @@ def admin_dashboard():
         end_date = latest_date
         end_date_str = end_date.strftime('%Y-%m-%d')
 
-    # จัดเตรียมข้อมูลพนักงานและแปลงเวลาไทย
+    # ผสมและเสริมข้อมูลพนักงาน รวมถึงแปลงเวลาประเทศไทยให้สมบูรณ์
     for item in checkins_data:
         original_created_at = item.get('created_at')
         item['fullname'] = user_map.get(item['username'], item['username'])
@@ -254,7 +254,7 @@ def admin_dashboard():
         
         thai_time_str = format_timestamp(original_created_at)
         item['formatted_time'] = thai_time_str
-        item['created_at'] = thai_time_str
+        item['created_at'] = thai_time_str  # รองรับทุกตัวแปรในเทมเพลต
 
     # ทำการกรอง (Filter) ข้อมูล
     filtered_checkins = []
@@ -418,7 +418,7 @@ def admin_delete_user(user_id):
     except Exception as e:
         return f"เกิดข้อผิดพลาดในการลบผู้ใช้งาน: {str(e)}", 500
 
-# ดาวน์โหลดข้อมูลเช็คอินเป็น Excel (คัดกรองตรงกันแดชบอร์ด)
+# ดาวน์โหลดข้อมูลเช็คอินเป็น Excel (รองรับการกรองตามเงื่อนไขเดียวกับแดชบอร์ด)
 @app.route('/admin/export')
 @admin_required
 def admin_export_excel():
@@ -441,7 +441,7 @@ def admin_export_excel():
         response = supabase.table('checkins').select('*').execute()
         checkins_data = response.data
 
-        # วิเคราะห์ช่วงเวลา
+        # วิเคราะห์คัดกรองช่วงเวลา
         start_date = None
         if start_date_str:
             try:
@@ -469,7 +469,7 @@ def admin_export_excel():
                 if end_date and item['created_date_obj'] > end_date:
                     continue
 
-            # กรองตาม Checklist
+            # กรองตามผู้ใช้แบบ Checklist
             if selected_users:
                 if item['username'] not in selected_users:
                     continue
