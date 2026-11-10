@@ -204,7 +204,8 @@ def admin_dashboard():
     selected_users = request.args.getlist('selected_users')
 
     # ดึงข้อมูลผู้ใช้ทั้งหมดเพื่อนำมาสร้าง checklist และ map ชื่อจริง-นามสกุล
-    user_response = supabase.table('users').select('id, username, firstname, lastname').execute()
+    user_response = supabase.table('users').select('id, username, firstname, lastname, role').execute()
+    users_for_checklist = [u for u in user_response.data if u.get('role') != 'admin']
     users_list = user_response.data
     user_map = {}
     for u in users_list:
@@ -299,6 +300,7 @@ def admin_dashboard():
         'admin.html', 
         checkins=paginated_checkins, 
         username=session['username'],
+        users_list=users_for_checklist,  # ⬅️ ส่งเฉพาะ user ที่ไม่ใช่ admin
         users_list=users_list,
         selected_users=selected_users,
         start_date=start_date_str,
