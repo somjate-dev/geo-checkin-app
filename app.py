@@ -1,6 +1,6 @@
 import os
 import io
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file
 import pandas as pd
@@ -13,17 +13,17 @@ from supabase import create_client, Client
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'checkin-super-secret-key-2026')
 
-# 2. เชื่อมต่อ Cloudinary
+# 2. เชื่อมต่อ Cloudinary (ดึงจาก Environment Variables ทั้งหมด ไม่มี Hardcoded)
 cloudinary.config(
-    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 't6gzttll'),
-    api_key = os.environ.get('CLOUDINARY_API_KEY', '411612461233476'),
-    api_secret = os.environ.get('CLOUDINARY_API_SECRET', '911GPlaZWRy-Hax0IVa9SLqHel0'),
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key = os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET'),
     secure = True
 )
 
-# 3. เชื่อมต่อ Supabase
-SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://xhakpthsysjkwdoptbmy.supabase.co').strip()
-SUPABASE_KEY = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoYWtwdGhzeXNqa3dkb3B0Ym15Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjQ3NjAyMCwiZXhwIjoyMTA4MDUyMDIwfQ.64qJFSqdUvo9bdafkwyDOnRlfHIUPwGRjzAkb_u0Hgo').strip()
+# 3. เชื่อมต่อ Supabase (ดึงจาก Environment Variables ทั้งหมด ไม่มี Hardcoded)
+SUPABASE_URL = (os.environ.get('SUPABASE_URL') or '').strip()
+SUPABASE_KEY = (os.environ.get('SUPABASE_KEY') or '').strip()
 
 # ตัดส่วนเกินของ URL อัตโนมัติ (หากเผลอก๊อปปี้เอา /rest/v1/ ติดมา)
 if "/rest/v1" in SUPABASE_URL:
@@ -40,39 +40,35 @@ except Exception as e:
     print(f"❌ ERROR ในการเชื่อมต่อ Supabase: {str(e)}")
     supabase = None
 
-# ฟังก์ชันแปลง Format วันเวลา
-# def format_stamp(iso_str):
-#     if not iso_str:
-#         return ""
-#     try:
-#         clean_str = iso_str.replace("Z", "+00:00")
-#         dt = datetime.fromisoformat(clean_str)
-#         return dt.strftime("%Y-%m-%d : %H:%M:%S")
-#     except Exception:
-#         return iso_str
-from datetime import datetime, timezone, timedelta
+# ⏰ กำหนด Timezone ประเทศไทย (UTC+7)
+THAILAND_TZ = timezone(timedelta(hours=7))
 
+# ฟังก์ชันแปลง Format วันเวลาเป็นเวลาประเทศไทย (UTC+7) รูปแบบ "yyyy-MM-dd : HH:mm:ss"
 def format_timestamp(iso_str):
     if not iso_str:
         return ""
     try:
-        # แปลงข้อความ ISO 8601 ให้รองรับ Timezone Offset
-        clean_str = iso_str.replace("Z", "+00:00")
+        clean_str = str(iso_str).replace("Z", "+00:00")
         dt = datetime.fromisoformat(clean_str)
-        
-        # หากตัวแปรวันเวลาที่ดึงมาไม่มีข้อมูล Timezone (เป็น Naive Datetime) ให้ตั้งค่าเริ่มต้นเป็น UTC
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-            
-        # แปลงค่าเขตเวลาไปเป็นเวลาประเทศไทย (UTC+7) อัตโนมัติ
-        thailand_tz = timezone(timedelta(hours=7))
-        dt_thailand = dt.astimezone(thailand_tz)
-        
-        # แสดงผลลัพธ์ในรูปแบบ "yyyy-MM-dd : HH:mm:ss" ตามที่คุณกำหนด
+        dt_thailand = dt.astimezone(THAILAND_TZ)
         return dt_thailand.strftime("%Y-%m-%d : %H:%M:%S")
     except Exception:
-        return iso_str
+        return str(iso_str)
 
+# ฟังก์ชันดึงเฉพาะวันที่เป็น Date object (เวลาไทย) เพื่อตรวจสอบช่วงเวลา
+def get_thailand_date(iso_str):
+    if not iso_str:
+        return None
+    try:
+        clean_str = str(iso_str).replace("Z", "+00:00")
+        dt = datetime.fromisoformat(clean_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(THAILAND_TZ).date()
+    except Exception:
+        return None
 
 # Decorators สิทธิ์การใช้งาน
 def login_required(f):
@@ -171,21 +167,24 @@ def api_checkin():
     except Exception as e:
         return jsonify({'success': False, 'message': f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
-# 2. admin_dashboard (หน้า admin.html เดิม เพิ่มเติมฟังก์ชันและ firstname+lastname)
+# 2. admin_dashboard (หน้า admin.html)
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
-    # รับค่าการค้นหา, การจัดเรียง, และการแบ่งหน้า
     search_query = request.args.get('search', '').strip()
     sort_col = request.args.get('sort', 'id')
     sort_order = request.args.get('order', 'desc')
     page = int(request.args.get('page', 1))
     per_page = 10
 
-    # ดึงข้อมูลผู้ใช้ทั้งหมดเพื่อเชื่อมโยงหา firstname + lastname
-    user_response = supabase.table('users').select('username, firstname, lastname').execute()
+    # คัดกรองชื่อพนักงานแบบ Checklist
+    selected_users = request.args.getlist('selected_users')
+
+    # ดึงข้อมูลผู้ใช้ทั้งหมดเพื่อนำมาทำ Checklist และ Map สรรหาชื่อจริง-นามสกุล
+    user_response = supabase.table('users').select('id, username, firstname, lastname').execute()
+    users_list = user_response.data
     user_map = {}
-    for u in user_response.data:
+    for u in users_list:
         fname = u.get('firstname') or ''
         lname = u.get('lastname') or ''
         fullname = f"{fname} {lname}".strip()
@@ -195,30 +194,77 @@ def admin_dashboard():
     response = supabase.table('checkins').select('*').execute()
     checkins_data = response.data
 
-    # ผสมและเสริมข้อมูล firstname + lastname และแปลง Format วันเวลา
+    # หาวันที่ล่าสุดที่มีอยู่ในระบบ เพื่อนำมาเป็นฐานย้อนหลัง 1 เดือน
+    all_dates = [get_thailand_date(c.get('created_at')) for c in checkins_data if c.get('created_at')]
+    all_dates = [d for d in all_dates if d is not None]
+    
+    if all_dates:
+        latest_date = max(all_dates)
+    else:
+        latest_date = datetime.now(THAILAND_TZ).date()
+
+    # ตั้งเวลาเริ่มต้นย้อนหลัง 1 เดือนนับจากวันล่าสุดในระบบ และสิ้นสุดที่วันล่าสุด
+    default_start_date_str = (latest_date - timedelta(days=30)).strftime('%Y-%m-%d')
+    default_end_date_str = latest_date.strftime('%Y-%m-%d')
+
+    start_date_str = request.args.get('start_date', default_start_date_str)
+    end_date_str = request.args.get('end_date', default_end_date_str)
+
+    # แปลงเปรียบเทียบเป็นวันที่ (Date Object) ป้องกัน Format ผิดพลาด
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    except Exception:
+        start_date = latest_date - timedelta(days=30)
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        
+    try:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except Exception:
+        end_date = latest_date
+        end_date_str = end_date.strftime('%Y-%m-%d')
+
+    # ผนวกข้อมูลพนักงานและจัดรูปแบบวันเวลาประเทศไทย
     for item in checkins_data:
         item['fullname'] = user_map.get(item['username'], item['username'])
-        item['created_at'] = format_timestamp(item.get('created_at'))
+        item['formatted_time'] = format_timestamp(item.get('created_at'))
+        item['created_date_obj'] = get_thailand_date(item.get('created_at'))
 
-    # ค้นหาข้อมูล (Search)
-    if search_query:
-        search_query_lower = search_query.lower()
-        filtered_checkins = []
-        for item in checkins_data:
-            if (search_query_lower in item['username'].lower() or 
-                search_query_lower in item['fullname'].lower() or
-                search_query_lower in str(item['latitude']) or
-                search_query_lower in str(item['longitude']) or
-                search_query_lower in item['created_at'].lower()):
-                filtered_checkins.append(item)
-        checkins_data = filtered_checkins
+    # ทำการกรอง (Filter) ข้อมูลประวัติเช็คอินตามเงื่อนไข
+    filtered_checkins = []
+    for item in checkins_data:
+        # 1. กรองตามระยะเวลา ( start_date <= วันที่เช็คอิน <= end_date )
+        if item['created_date_obj']:
+            if not (start_date <= item['created_date_obj'] <= end_date):
+                continue
+
+        # 2. กรองตามรายชื่อพนักงานที่ระบุ (Checklist)
+        if selected_users:
+            if item['username'] not in selected_users:
+                continue
+
+        # 3. กรองตามข้อความที่ใช้ค้นหา (Search Query)
+        if search_query:
+            sq_lower = search_query.lower()
+            if not (sq_lower in item['username'].lower() or 
+                    sq_lower in item['fullname'].lower() or
+                    sq_lower in str(item['latitude']) or
+                    sq_lower in str(item['longitude']) or
+                    sq_lower in item['formatted_time'].lower()):
+                continue
+
+        filtered_checkins.append(item)
+
+    checkins_data = filtered_checkins
 
     # จัดเรียงข้อมูล (Sort)
     reverse_order = (sort_order == 'desc')
     if sort_col in ['id', 'username', 'created_at']:
-        checkins_data.sort(key=lambda x: x.get(sort_col, ''), reverse=reverse_order)
+        if sort_col == 'created_at':
+            checkins_data.sort(key=lambda x: x.get('created_at', ''), reverse=reverse_order)
+        else:
+            checkins_data.sort(key=lambda x: x.get(sort_col, ''), reverse=reverse_order)
 
-    # แบ่งหน้า (Pagination)
+    # แบ่งหน้า (Pagination 10 รายการ)
     total_records = len(checkins_data)
     total_pages = (total_records + per_page - 1) // per_page
     start_idx = (page - 1) * per_page
@@ -229,6 +275,10 @@ def admin_dashboard():
         'admin.html', 
         checkins=paginated_checkins, 
         username=session['username'],
+        users_list=users_list,
+        selected_users=selected_users,
+        start_date=start_date_str,
+        end_date=end_date_str,
         search_query=search_query,
         sort_col=sort_col,
         sort_order=sort_order,
@@ -267,7 +317,7 @@ def admin_manage():
     if sort_col in ['id', 'username', 'role']:
         users_data.sort(key=lambda x: x.get(sort_col, ''), reverse=reverse_order)
 
-    # แบ่งหน้า (Pagination)
+    # แบ่งหน้า (Pagination 10 รายการ)
     total_records = len(users_data)
     total_pages = (total_records + per_page - 1) // per_page
     start_idx = (page - 1) * per_page
@@ -344,11 +394,16 @@ def admin_delete_user(user_id):
     except Exception as e:
         return f"เกิดข้อผิดพลาดในการลบผู้ใช้งาน: {str(e)}", 500
 
-# ดาวน์โหลดข้อมูลเช็คอินเป็น Excel
+# ดาวน์โหลดข้อมูลเช็คอินเป็น Excel (ส่งข้อมูลคัดกรองไปด้วย)
 @app.route('/admin/export')
 @admin_required
 def admin_export_excel():
     try:
+        search_query = request.args.get('search', '').strip()
+        selected_users = request.args.getlist('selected_users')
+        start_date_str = request.args.get('start_date', '')
+        end_date_str = request.args.get('end_date', '')
+
         # ดึงข้อมูลมาสร้าง map ชื่อจริง-นามสกุล
         user_response = supabase.table('users').select('username, firstname, lastname').execute()
         user_map = {}
@@ -362,15 +417,59 @@ def admin_export_excel():
         response = supabase.table('checkins').select('*').execute()
         checkins_data = response.data
 
-        # ผสมฟิลด์ชื่อจริง-นามสกุล และจัด Format วันเวลาลง Excel ให้ตรงกัน
+        # กรองข้อมูลช่วงวันที่ก่อนพิมพ์ Excel
+        start_date = None
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except Exception:
+                pass
+        end_date = None
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except Exception:
+                pass
+
+        filtered_checkins = []
         for item in checkins_data:
             item['Fullname'] = user_map.get(item['username'], item['username'])
-            item['created_at'] = format_timestamp(item.get('created_at'))
+            item['formatted_time'] = format_timestamp(item.get('created_at'))
+            item['created_date_obj'] = get_thailand_date(item.get('created_at'))
 
-        # แปลงเป็น DataFrame และปรับแต่งหัวข้อ
+            # กรองช่วงเวลา
+            if item['created_date_obj']:
+                if start_date and item['created_date_obj'] < start_date:
+                    continue
+                if end_date and item['created_date_obj'] > end_date:
+                    continue
+
+            # กรองตาม Checklist พนักงาน
+            if selected_users:
+                if item['username'] not in selected_users:
+                    continue
+
+            # กรองตามคำค้นหา
+            if search_query:
+                sq_lower = search_query.lower()
+                if not (sq_lower in item['username'].lower() or 
+                        sq_lower in item['Fullname'].lower() or
+                        sq_lower in str(item['latitude']) or
+                        sq_lower in str(item['longitude']) or
+                        sq_lower in item['formatted_time'].lower()):
+                    continue
+
+            filtered_checkins.append(item)
+
+        checkins_data = filtered_checkins
+
+        # นำเวลาประเทศไทยที่แปลงเรียบร้อยแล้วไปเขียนลงรายงาน Excel
+        for item in checkins_data:
+            item['created_at'] = item['formatted_time']
+
+        # แปลงเป็น DataFrame และสลับหัวข้อเพื่อความสวยงาม
         df = pd.DataFrame(checkins_data)
         
-        # จัดการเลือกเฉพาะคอลัมน์ที่ต้องการเพื่อความสวยงาม
         export_columns = {
             'id': 'ลำดับ',
             'username': 'ชื่อผู้ใช้งาน (Username)',
@@ -378,14 +477,12 @@ def admin_export_excel():
             'latitude': 'ละติจูด (Latitude)',
             'longitude': 'ลองจิจูด (Longitude)',
             'photo_url': 'ลิงก์รูปถ่าย (Photo Link)',
-            'created_at': 'วัน/เวลา (Date/Time)'
+            'created_at': 'วัน/เวลา (เวลาไทย)'
         }
         
-        # คัดกรองและเรียงสลับคอลัมน์ใหม่ตามโครงสร้างที่ต้องการ
         df = df.rename(columns=export_columns)
         df_final = df[[val for val in export_columns.values() if val in df.columns]]
 
-        # บันทึกเป็นไบนารี Excel stream
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df_final.to_excel(writer, index=False, sheet_name='Checkin_Reports')
