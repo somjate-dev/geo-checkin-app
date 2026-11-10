@@ -78,15 +78,18 @@
                 <!-- 3. คัดกรองชื่อพนักงานแบบ Checklist -->
                 <div class="col-lg-4 col-12">
                     <label class="form-label small fw-bold text-muted">คัดเลือกรายชื่อพนักงาน (Checklist)</label>
+                    <!-- แก้เป็น: เพิ่มเงื่อนไข if u.role != 'admin' -->
                     <div class="user-checklist">
                         {% for u in users_list %}
-                        <div class="form-check form-check-sm mb-1">
-                            <input class="form-check-input" type="checkbox" name="selected_users" value="{{ u.username }}" id="chk_{{ u.username }}"
-                                   {% if u.username in selected_users %}checked{% endif %}>
-                            <label class="form-check-label small" for="chk_{{ u.username }}">
-                                {{ u.firstname }} {{ u.lastname }} ({{ u.username }})
-                            </label>
-                        </div>
+                            {% if u.role != 'admin' %}
+                            <div class="form-check form-check-sm mb-1">
+                                <input class="form-check-input" type="checkbox" name="selected_users" value="{{ u.username }}" id="chk_{{ u.username }}"
+                                       {% if u.username in selected_users %}checked{% endif %}>
+                                <label class="form-check-label small" for="chk_{{ u.username }}">
+                                    {{ u.firstname }} {{ u.lastname }} ({{ u.username }})
+                                </label>
+                            </div>
+                            {% endif %}
                         {% else %}
                         <div class="text-muted small py-2">ไม่มีข้อมูลพนักงาน</div>
                         {% endfor %}
