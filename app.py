@@ -301,7 +301,7 @@ def admin_dashboard():
         checkins=paginated_checkins, 
         username=session['username'],
         users_list=users_for_checklist,  # ⬅️ ส่งเฉพาะ user ที่ไม่ใช่ admin
-        users_list=users_list,
+        # users_list=users_list,
         selected_users=selected_users,
         start_date=start_date_str,
         end_date=end_date_str,
