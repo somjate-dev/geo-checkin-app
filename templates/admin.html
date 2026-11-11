@@ -57,7 +57,7 @@
         <form method="GET" action="/admin">
             <div class="row g-3">
                 <!-- 1. ค้นหาทั่วไป -->
-                <div class="col-lg-4 col-md-6">
+                <div class="col-lg-6">
                     <label class="form-label small fw-bold text-muted">ค้นหาพิกัด / ข้อความ</label>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
@@ -66,7 +66,7 @@
                 </div>
 
                 <!-- 2. ช่วงระยะเวลาระหว่างวันที่ -->
-                <div class="col-lg-4 col-md-6">
+                <div class="col-lg-6">
                     <label class="form-label small fw-bold text-muted">ช่วงวันที่เช็คอิน (เริ่มต้น - สิ้นสุด)</label>
                     <div class="input-group input-group-sm">
                         <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
@@ -76,7 +76,7 @@
                 </div>
 
                 <!-- 3. คัดกรองชื่อพนักงานแบบ Checklist -->
-                <div class="col-lg-4 col-12">
+                <div class="col-12">
                     <label class="form-label small fw-bold text-muted">คัดเลือกรายชื่อพนักงาน (Checklist)</label>
                     <div class="user-checklist">
                         {% for u in users_list %}
