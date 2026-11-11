@@ -75,21 +75,26 @@
                     </div>
                 </div>
 
-                <!-- 3. คัดกรองชื่อพนักงานแบบ Checklist -->
+                <!-- 3. คัดกรองชื่อพนักงานแบบ Checklist (เรียงแนวนอนไหลตามจอ) -->
                 <div class="col-12">
                     <label class="form-label small fw-bold text-muted">คัดเลือกรายชื่อพนักงาน (Checklist)</label>
-                    <div class="user-checklist">
-                        {% for u in users_list %}
-                        <div class="form-check form-check-sm mb-1">
-                            <input class="form-check-input" type="checkbox" name="selected_users" value="{{ u.username }}" id="chk_{{ u.username }}"
-                                   {% if u.username in selected_users %}checked{% endif %}>
-                            <label class="form-check-label small" for="chk_{{ u.username }}">
-                                {{ u.firstname }} {{ u.lastname }} ({{ u.username }})
-                            </label>
+                    <div class="user-checklist p-3">
+                        <!-- เพิ่มคลาส d-flex flex-wrap gap-3 เพื่อจัดแนวและเว้นระยะห่าง -->
+                        <div class="d-flex flex-wrap gap-3">
+                            {% for u in users_list %}
+                                {% if u.role != 'admin' %}  <!-- (เพิ่มเงื่อนไขไม่แสดงผู้ใช้ที่เป็น admin) -->
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="checkbox" name="selected_users" value="{{ u.username }}" id="chk_{{ u.username }}"
+                                           {% if u.username in selected_users %}checked{% endif %}>
+                                    <label class="form-check-label small" for="chk_{{ u.username }}">
+                                        {{ u.firstname }} {{ u.lastname }} ({{ u.username }})
+                                    </label>
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="text-muted small py-2">ไม่มีข้อมูลพนักงาน</div>
+                            {% endfor %}
                         </div>
-                        {% else %}
-                        <div class="text-muted small py-2">ไม่มีข้อมูลพนักงาน</div>
-                        {% endfor %}
                     </div>
                 </div>
             </div>
